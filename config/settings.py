@@ -26,6 +26,9 @@ INSTALLED_APPS = [
     "rest_framework",
     "drf_spectacular",
     "users",
+    "quizzes",
+    "attempts",
+    "analytics",
 ]
 
 MIDDLEWARE = [
