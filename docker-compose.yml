@@ -5,6 +5,7 @@ x-app: &app
     DJANGO_SECRET_KEY: change-me-in-prod
     DJANGO_ALLOWED_HOSTS: localhost,127.0.0.1
     DJANGO_CSRF_TRUSTED_ORIGINS: http://localhost:${APP_PORT:-8080},http://127.0.0.1:${APP_PORT:-8080}
+    # внутри сети compose postgres всегда на 5432, наружу пробрасывается DB_HOST_PORT
     POSTGRES_HOST: db
     POSTGRES_PORT: "5432"
     # для демо: чтобы в swagger можно было представиться через X-User-Id
@@ -19,7 +20,7 @@ services:
       POSTGRES_USER: ugc
       POSTGRES_PASSWORD: ugc
     ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+      - "${DB_HOST_PORT:-5444}:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:

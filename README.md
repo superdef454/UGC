@@ -17,7 +17,7 @@ docker compose exec web python manage.py seed_demo
 Дальше http://localhost:8080, вход `alice` / `demo-pass` (автор опроса «Овощи» с готовой статистикой) или `bob` / `demo-pass` (может его пройти).
 Swagger - http://localhost:8080/api/docs/, в Authorize можно указать `X-User-Id` (у alice id=1, у bob id=2).
 
-В compose поднимаются: postgres, миграции, web (gunicorn + uvicorn-воркеры), воркер статистики и nginx. Если порты заняты: `APP_PORT=8088 POSTGRES_PORT=5433 docker compose up`.
+В compose поднимаются: postgres, миграции, web (gunicorn + uvicorn-воркеры), воркер статистики и nginx. Порты на хосте: сайт 8080, база 5444 (не 5432, чтобы не конфликтовать с локальным postgres). Если заняты: `APP_PORT=8088 DB_HOST_PORT=5455 docker compose up`, а для локального запуска Django тот же порт в `POSTGRES_PORT`.
 
 ### Локально
 

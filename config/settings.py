@@ -69,7 +69,7 @@ DATABASES = {
         "USER": os.environ.get("POSTGRES_USER", "ugc"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "ugc"),
         "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
-        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5444"),
         "CONN_MAX_AGE": 0,
         "OPTIONS": {
             "pool": {"min_size": 2, "max_size": 20},
