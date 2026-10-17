@@ -32,7 +32,9 @@ class QuestionReport:
     type: str
     answers_count: int
     skipped_count: int
+    allow_custom_answer: bool
     custom_count: int
+    custom_percent: int
     avg_time_seconds: float | None
     is_slowest: bool
     options: tuple[OptionReport, ...]
@@ -56,6 +58,10 @@ def _avg_time(stats: QuestionStats) -> float | None:
     return round(stats.total_time_ms / seen / 1000, 1) if seen else None
 
 
+def _percent(count: int, total: int) -> int:
+    return round(count * 100 / total) if total else 0
+
+
 def _question_report(
     question: QuestionItem, stats: QuestionStats, *, slowest: bool
 ) -> QuestionReport:
@@ -67,7 +73,9 @@ def _question_report(
         type=question.type,
         answers_count=stats.answers_count,
         skipped_count=stats.skipped_count,
+        allow_custom_answer=question.allow_custom_answer,
         custom_count=stats.custom_count,
+        custom_percent=_percent(stats.custom_count, stats.answers_count),
         avg_time_seconds=_avg_time(stats),
         is_slowest=slowest,
         options=tuple(
@@ -75,7 +83,7 @@ def _question_report(
                 id=option.id,
                 text=option.text,
                 count=(count := stats.options.get(option.id, 0)),
-                percent=round(count * 100 / stats.answers_count) if stats.answers_count else 0,
+                percent=_percent(count, stats.answers_count),
                 is_top=0 < count == top,
             )
             for option in question.options

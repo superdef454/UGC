@@ -1,0 +1,50 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ quiz.title }}{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'web:my-quizzes' %}">Мои опросы</a>
+
+<div class="page-head">
+  <span class="badge badge--{{ quiz.status }}">{{ quiz.get_status_display }}</span>
+  <h1 class="page-title">{{ quiz.title }}</h1>
+  {% if quiz.description %}<p class="lead">{{ quiz.description }}</p>{% endif %}
+</div>
+
+{% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+
+<div class="toolbar">
+  {% if quiz.status == "draft" %}
+    <form method="post" action="{% url 'web:quiz-action' quiz.pk 'publish' %}">
+      {% csrf_token %}
+      <button class="button" type="submit">Опубликовать</button>
+    </form>
+    <p class="hint">После публикации вопросы и варианты менять нельзя, иначе статистика перестанет сходиться.</p>
+  {% else %}
+    <a class="button" href="{% url 'web:quiz-statistics' quiz.pk %}">Статистика</a>
+    {% if quiz.status == "published" %}
+      <form method="post" action="{% url 'web:quiz-action' quiz.pk 'close' %}">
+        {% csrf_token %}
+        <button class="button button--ghost" type="submit">Закрыть опрос</button>
+      </form>
+      <p class="hint">Ссылка для участников: <a class="link" href="{% url 'web:take-quiz' quiz.pk %}">{{ request.scheme }}://{{ request.get_host }}{% url 'web:take-quiz' quiz.pk %}</a></p>
+    {% endif %}
+  {% endif %}
+</div>
+
+<ol class="outline">
+  {% for q in structure.questions %}
+    <li class="outline__item">
+      <p class="outline__question">{{ q.text }}</p>
+      <p class="outline__meta">
+        {% if q.is_multiple %}несколько вариантов{% else %}один вариант{% endif %}{% if q.allow_custom_answer %}, можно свой ответ{% endif %}{% if not q.is_required %}, необязательный{% endif %}
+      </p>
+      {% if q.options %}
+        <ul class="outline__options">
+          {% for option in q.options %}<li>{{ option.text }}</li>{% endfor %}
+        </ul>
+      {% endif %}
+    </li>
+  {% endfor %}
+</ol>
+{% endblock %}

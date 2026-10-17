@@ -1,0 +1,29 @@
+{% extends "web/base.html" %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<section class="sheet sheet--narrow">
+  <h1 class="page-title">Вход</h1>
+
+  {% if form.errors %}
+    <p class="alert" role="alert">Неверное имя пользователя или пароль.</p>
+  {% endif %}
+
+  <form method="post" class="form">
+    {% csrf_token %}
+    <input type="hidden" name="next" value="{{ next }}">
+    <label class="field">
+      <span class="field__label">Имя пользователя</span>
+      <input type="text" name="username" autocomplete="username" required autofocus value="{{ form.username.value|default:'' }}">
+    </label>
+    <label class="field">
+      <span class="field__label">Пароль</span>
+      <input type="password" name="password" autocomplete="current-password" required>
+    </label>
+    <button class="button" type="submit">Войти</button>
+  </form>
+
+  <p class="hint">Демо-пользователи после <code>manage.py seed_demo</code>: alice и bob, пароль <code>demo-pass</code>.</p>
+</section>
+{% endblock %}

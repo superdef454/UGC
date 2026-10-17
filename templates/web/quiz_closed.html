@@ -1,0 +1,9 @@
+{% extends "web/base.html" %}
+
+{% block content %}
+<section class="sheet sheet--narrow">
+  <h1 class="page-title">{{ message }}</h1>
+  <p>Ответы на этот опрос больше не принимаются.</p>
+  <a class="button" href="{% url 'web:quiz-list' %}">К другим опросам</a>
+</section>
+{% endblock %}

@@ -1,0 +1,41 @@
+{% extends "web/base.html" %}
+{% load web_tags %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Опросы</h1>
+  <p class="lead">Вопросы идут по одному. Можно прерваться и вернуться позже, ответы сохранятся.</p>
+</div>
+
+{% if rows %}
+  <ul class="rows">
+    {% for row in rows %}
+      <li class="row">
+        <div class="row__main">
+          <h2 class="row__title">{{ row.quiz.title }}</h2>
+          {% if row.quiz.description %}<p class="row__text">{{ row.quiz.description }}</p>{% endif %}
+          <p class="row__meta">
+            {{ row.quiz.questions_count }} {{ row.quiz.questions_count|ru_plural:"вопрос,вопроса,вопросов" }},
+            автор {{ row.quiz.author.username }}
+          </p>
+        </div>
+        <div class="row__side">
+          {% if row.attempt.status == "finished" %}
+            <span class="badge badge--done">Пройден</span>
+          {% elif row.attempt %}
+            <a class="button button--secondary" href="{% url 'web:take-quiz' row.quiz.pk %}">Продолжить</a>
+            <span class="row__hint">{{ row.attempt.answered_count }} из {{ row.attempt.questions_count }}</span>
+          {% else %}
+            <a class="button" href="{% url 'web:take-quiz' row.quiz.pk %}">Пройти</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty">
+    <p>Опубликованных опросов пока нет.</p>
+    <a class="button" href="{% url 'web:quiz-builder' %}">Создать опрос</a>
+  </div>
+{% endif %}
+{% endblock %}

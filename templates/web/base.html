@@ -1,0 +1,39 @@
+{% load static %}<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Опросы{% endblock %}</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Onest:wght@400;500;600;700;800&display=swap">
+  <link rel="stylesheet" href="{% static 'css/app.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar__inner">
+      <a class="logo" href="{% url 'web:quiz-list' %}">Опросы</a>
+      {% if user.is_authenticated %}
+        {% with current=request.resolver_match.url_name %}
+        <nav class="nav" aria-label="Разделы">
+          <a href="{% url 'web:quiz-list' %}"{% if current == 'quiz-list' or current == 'take-quiz' %} aria-current="page"{% endif %}>Пройти</a>
+          <a href="{% url 'web:my-attempts' %}"{% if current == 'my-attempts' %} aria-current="page"{% endif %}>Мои прохождения</a>
+          <a href="{% url 'web:my-quizzes' %}"{% if current == 'my-quizzes' or current == 'quiz-detail' or current == 'quiz-builder' or current == 'quiz-statistics' %} aria-current="page"{% endif %}>Мои опросы</a>
+        </nav>
+        {% endwith %}
+        <form class="account" method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <span class="account__name">{{ user.username }}</span>
+          <button class="link-button" type="submit">Выйти</button>
+        </form>
+      {% endif %}
+    </div>
+  </header>
+
+  <main class="page">
+    {% block content %}{% endblock %}
+  </main>
+
+  {% block scripts %}{% endblock %}
+</body>
+</html>

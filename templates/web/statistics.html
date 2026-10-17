@@ -1,0 +1,59 @@
+{% extends "web/base.html" %}
+{% load web_tags %}
+
+{% block title %}Статистика: {{ report.title }}{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'web:quiz-detail' report.quiz_id %}">{{ report.title }}</a>
+
+<div class="page-head">
+  <h1 class="page-title">Статистика</h1>
+</div>
+
+<dl class="summary">
+  <div class="summary__item">
+    <dt>Прошли до конца</dt>
+    <dd>{{ report.attempts_count }}</dd>
+  </div>
+  <div class="summary__item">
+    <dt>Среднее время</dt>
+    <dd>{{ report.avg_duration_seconds|duration }}</dd>
+  </div>
+  <div class="summary__item">
+    <dt>Обновлено</dt>
+    <dd class="summary__small">{% if report.updated_at %}{{ report.updated_at|date:"j E, H:i:s" }}{% else %}ещё не было{% endif %}</dd>
+  </div>
+</dl>
+
+{% if not report.attempts_count %}
+  <p class="hint">Пока никто не прошёл опрос до конца. Цифры появятся через пару секунд после первого завершённого прохождения.</p>
+{% endif %}
+
+{% for q in report.questions %}
+  <section class="stat">
+    <h2 class="stat__question"><span class="stat__order">{{ q.order }}</span>{{ q.text }}</h2>
+    <p class="stat__meta">
+      {{ q.answers_count }} {{ q.answers_count|ru_plural:"ответ,ответа,ответов" }}{% if q.skipped_count %}, пропустили {{ q.skipped_count }}{% endif %},
+      в среднем {{ q.avg_time_seconds|duration }}
+      {% if q.is_slowest %}<span class="badge badge--slow">дольше всего думали</span>{% endif %}
+    </p>
+
+    <ul class="bars">
+      {% for option in q.options %}
+        <li class="bar{% if option.is_top %} bar--top{% endif %}">
+          <span class="bar__label">{{ option.text }}</span>
+          <span class="bar__track"><span class="bar__fill" style="width: {{ option.percent }}%"></span></span>
+          <span class="bar__value">{{ option.percent }}%<small>{{ option.count }}</small></span>
+        </li>
+      {% endfor %}
+      {% if q.allow_custom_answer %}
+        <li class="bar bar--custom">
+          <span class="bar__label">свой вариант</span>
+          <span class="bar__track"><span class="bar__fill" style="width: {{ q.custom_percent }}%"></span></span>
+          <span class="bar__value">{{ q.custom_percent }}%<small>{{ q.custom_count }}</small></span>
+        </li>
+      {% endif %}
+    </ul>
+  </section>
+{% endfor %}
+{% endblock %}

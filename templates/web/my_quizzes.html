@@ -1,0 +1,38 @@
+{% extends "web/base.html" %}
+{% load web_tags %}
+
+{% block title %}Мои опросы{% endblock %}
+
+{% block content %}
+<div class="page-head page-head--split">
+  <h1 class="page-title">Мои опросы</h1>
+  <a class="button" href="{% url 'web:quiz-builder' %}">Создать опрос</a>
+</div>
+
+{% if quizzes %}
+  <ul class="rows">
+    {% for quiz in quizzes %}
+      <li class="row">
+        <div class="row__main">
+          <h2 class="row__title"><a href="{% url 'web:quiz-detail' quiz.pk %}">{{ quiz.title }}</a></h2>
+          <p class="row__meta">
+            {{ quiz.questions_count }} {{ quiz.questions_count|ru_plural:"вопрос,вопроса,вопросов" }},
+            {% if quiz.status == "draft" %}создан {{ quiz.created_at|date:"j E" }}{% else %}прошли {{ quiz.attempts_count }} {{ quiz.attempts_count|ru_plural:"раз,раза,раз" }}{% endif %}
+          </p>
+        </div>
+        <div class="row__side">
+          <span class="badge badge--{{ quiz.status }}">{{ quiz.get_status_display }}</span>
+          {% if quiz.status != "draft" %}
+            <a class="link" href="{% url 'web:quiz-statistics' quiz.pk %}">Статистика</a>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty">
+    <p>Здесь будут ваши опросы.</p>
+    <a class="button" href="{% url 'web:quiz-builder' %}">Создать первый</a>
+  </div>
+{% endif %}
+{% endblock %}

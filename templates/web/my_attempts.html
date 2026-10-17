@@ -1,0 +1,42 @@
+{% extends "web/base.html" %}
+
+{% block title %}Мои прохождения{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <h1 class="page-title">Мои прохождения</h1>
+</div>
+
+{% if attempts %}
+  <ul class="rows">
+    {% for attempt in attempts %}
+      <li class="row">
+        <div class="row__main">
+          <h2 class="row__title">{{ attempt.quiz.title }}</h2>
+          <div class="meter" aria-hidden="true">
+            <span class="meter__fill" style="width: {% widthratio attempt.answered_count attempt.questions_count 100 %}%"></span>
+          </div>
+          <p class="row__meta">
+            {{ attempt.answered_count }} из {{ attempt.questions_count }},
+            {% if attempt.finished_at %}закончил {{ attempt.finished_at|date:"j E, H:i" }}{% else %}начал {{ attempt.started_at|date:"j E, H:i" }}{% endif %}
+          </p>
+        </div>
+        <div class="row__side">
+          {% if attempt.status == "finished" %}
+            <span class="badge badge--done">Пройден</span>
+          {% elif attempt.quiz.status == "published" %}
+            <a class="button button--secondary" href="{% url 'web:take-quiz' attempt.quiz_id %}">Продолжить</a>
+          {% else %}
+            <span class="badge">Опрос закрыт</span>
+          {% endif %}
+        </div>
+      </li>
+    {% endfor %}
+  </ul>
+{% else %}
+  <div class="empty">
+    <p>Вы ещё не начинали ни одного опроса.</p>
+    <a class="button" href="{% url 'web:quiz-list' %}">Выбрать опрос</a>
+  </div>
+{% endif %}
+{% endblock %}

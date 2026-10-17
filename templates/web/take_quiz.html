@@ -1,0 +1,63 @@
+{% extends "web/base.html" %}
+
+{% block title %}{{ state.quiz_title }}{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'web:quiz-list' %}">Все опросы</a>
+
+<div class="passing">
+  <p class="passing__quiz">{{ state.quiz_title }}</p>
+  <div class="segments" role="progressbar" aria-valuemin="0" aria-valuemax="{{ state.progress.total }}" aria-valuenow="{{ state.progress.answered }}" aria-label="Отвечено {{ state.progress.answered }} из {{ state.progress.total }}">
+    {% for done in segments %}<span class="segment{% if done %} is-done{% endif %}"></span>{% endfor %}
+  </div>
+
+  {% if state.is_finished %}
+    <section class="sheet sheet--done">
+      <h1 class="question__text">Готово, спасибо!</h1>
+      <p>Ответы сохранены. Автор увидит их в статистике через пару секунд.</p>
+      <a class="button" href="{% url 'web:quiz-list' %}">К другим опросам</a>
+    </section>
+  {% else %}
+    {% with q=state.question %}
+    <form method="post" class="sheet question">
+      {% csrf_token %}
+      <input type="hidden" name="question_id" value="{{ q.id }}">
+
+      <p class="question__counter">
+        Вопрос {{ state.progress.answered|add:1 }} из {{ state.progress.total }}{% if q.is_multiple %}, можно выбрать несколько{% endif %}{% if not q.is_required %}, можно пропустить{% endif %}
+      </p>
+      <h1 class="question__text">{{ q.text }}</h1>
+
+      {% if error %}<p class="alert" role="alert">{{ error }}</p>{% endif %}
+
+      {% if q.options %}
+      <fieldset class="choices">
+        <legend class="visually-hidden">Варианты ответа</legend>
+        {% for option in q.options %}
+          <label class="choice">
+            <input type="{% if q.is_multiple %}checkbox{% else %}radio{% endif %}" name="option" value="{{ option.id }}"{% if option.id|stringformat:"d" in picked %} checked{% endif %}>
+            <span class="choice__mark choice__mark--{% if q.is_multiple %}box{% else %}dot{% endif %}" aria-hidden="true"></span>
+            <span class="choice__text">{{ option.text }}</span>
+          </label>
+        {% endfor %}
+      </fieldset>
+      {% endif %}
+
+      {% if q.allow_custom_answer %}
+        <label class="field">
+          <span class="field__label">{% if q.options %}Или напишите свой вариант{% else %}Ваш ответ{% endif %}</span>
+          <textarea name="custom_text" rows="2" maxlength="1000">{{ custom_text }}</textarea>
+        </label>
+      {% endif %}
+
+      <div class="actions">
+        <button class="button" type="submit">Ответить</button>
+        {% if not q.is_required %}
+          <button class="button button--ghost" type="submit" name="skip" value="1">Пропустить</button>
+        {% endif %}
+      </div>
+    </form>
+    {% endwith %}
+  {% endif %}
+</div>
+{% endblock %}

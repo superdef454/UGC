@@ -1,0 +1,73 @@
+{% extends "web/base.html" %}
+{% load static %}
+
+{% block title %}Новый опрос{% endblock %}
+
+{% block content %}
+<a class="back" href="{% url 'web:my-quizzes' %}">Мои опросы</a>
+
+<div class="page-head">
+  <h1 class="page-title">Новый опрос</h1>
+  <p class="lead">Вопросы и варианты показываются участникам в том порядке, в каком они здесь.</p>
+</div>
+
+<form class="builder" id="builder" data-api="{% url 'my-quiz-list' %}" data-detail="{% url 'web:quiz-detail' 0 %}">
+  {% csrf_token %}
+  <p class="alert" role="alert" id="builder-error" hidden></p>
+
+  <section class="sheet">
+    <label class="field">
+      <span class="field__label">Название</span>
+      <input type="text" name="title" maxlength="255" required placeholder="Например, Овощи">
+    </label>
+    <label class="field">
+      <span class="field__label">Описание <span class="field__optional">необязательно</span></span>
+      <textarea name="description" rows="2"></textarea>
+    </label>
+  </section>
+
+  <ol class="builder__questions" id="questions"></ol>
+
+  <div class="actions">
+    <button class="button button--secondary" type="button" id="add-question">Добавить вопрос</button>
+    <button class="button" type="submit">Сохранить черновик</button>
+  </div>
+</form>
+
+<template id="question-template">
+  <li class="sheet builder__question">
+    <div class="builder__question-head">
+      <span class="builder__number"></span>
+      <div class="builder__moves">
+        <button class="icon-button" type="button" data-move="up" aria-label="Поднять вопрос"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 10 8 5.5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="icon-button" type="button" data-move="down" aria-label="Опустить вопрос"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+        <button class="icon-button" type="button" data-remove aria-label="Удалить вопрос"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+      </div>
+    </div>
+    <label class="field">
+      <span class="field__label">Вопрос</span>
+      <input type="text" data-field="text" maxlength="1000" required>
+    </label>
+    <div class="builder__settings">
+      <label class="toggle"><input type="checkbox" data-field="multiple"> несколько вариантов</label>
+      <label class="toggle"><input type="checkbox" data-field="custom"> можно свой ответ</label>
+      <label class="toggle"><input type="checkbox" data-field="required" checked> обязательный</label>
+    </div>
+    <ol class="builder__options"></ol>
+    <button class="link-button" type="button" data-add-option>Добавить вариант</button>
+  </li>
+</template>
+
+<template id="option-template">
+  <li class="builder__option">
+    <input type="text" data-field="option" maxlength="500" placeholder="Вариант ответа" aria-label="Вариант ответа">
+    <button class="icon-button" type="button" data-move="up" aria-label="Поднять вариант"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 10 8 5.5l4.5 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="icon-button" type="button" data-move="down" aria-label="Опустить вариант"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="M3.5 6 8 10.5 12.5 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg></button>
+    <button class="icon-button" type="button" data-remove aria-label="Удалить вариант"><svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><path d="m4.5 4.5 7 7m0-7-7 7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></button>
+  </li>
+</template>
+{% endblock %}
+
+{% block scripts %}
+<script src="{% static 'js/builder.js' %}"></script>
+{% endblock %}
