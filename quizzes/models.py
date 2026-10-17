@@ -1,6 +1,27 @@
+from typing import Self
+
 from django.conf import settings
 from django.db import models
-from django.db.models import Deferrable, Q
+from django.db.models import Count, Deferrable, OuterRef, Q, Subquery
+from django.db.models.functions import Coalesce
+
+
+class QuizQuerySet(models.QuerySet["Quiz"]):
+    """Выборки опросов."""
+
+    def with_questions_count(self) -> Self:
+        """Добавляет ``questions_count``.
+
+        Коррелированный подзапрос, а не JOIN + GROUP BY: считается только
+        для строк страницы, а не для всех опросов перед LIMIT.
+        """
+        count = (
+            Question.objects.filter(quiz=OuterRef("pk"))
+            .values("quiz")
+            .annotate(count=Count("pk"))
+            .values("count")
+        )
+        return self.annotate(questions_count=Coalesce(Subquery(count), 0))
 
 
 class Quiz(models.Model):
@@ -35,6 +56,8 @@ class Quiz(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     published_at = models.DateTimeField(null=True, blank=True)
+
+    objects = QuizQuerySet.as_manager()
 
     class Meta:
         verbose_name = "опрос"

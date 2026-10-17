@@ -121,6 +121,10 @@ SPECTACULAR_SETTINGS = {
     "DESCRIPTION": "Создание опросов, прохождение и статистика",
     "VERSION": "0.1.0",
     "SERVE_INCLUDE_SCHEMA": False,
+    "ENUM_NAME_OVERRIDES": {
+        "QuizStatusEnum": "quizzes.models.Quiz.Status",
+        "AttemptStatusEnum": "attempts.models.Attempt.Status",
+    },
 }
 
 STATISTICS_BATCH_SIZE = 500

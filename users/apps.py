@@ -6,3 +6,6 @@ class UsersConfig(AppConfig):
 
     name = "users"
     verbose_name = "Пользователи"
+
+    def ready(self) -> None:
+        from users import schema  # noqa: F401 - регистрирует расширение для swagger
