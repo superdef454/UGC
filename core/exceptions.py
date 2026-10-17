@@ -21,12 +21,6 @@ class NotFoundError(DomainError):
     status_code = status.HTTP_404_NOT_FOUND
 
 
-class PermissionDeniedError(DomainError):
-    """Действие запрещено этому пользователю."""
-
-    status_code = status.HTTP_403_FORBIDDEN
-
-
 def exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
     """Обработчик DRF, который дополнительно понимает доменные ошибки."""
     if isinstance(exc, DomainError):

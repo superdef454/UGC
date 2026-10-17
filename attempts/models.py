@@ -45,7 +45,7 @@ class Answer(models.Model):
     """Ответ на один вопрос в рамках прохождения.
 
     Это самая большая таблица (~1 млрд строк на целевых объёмах), поэтому
-    индексов здесь ровно столько, сколько нужно запросам.
+    лишних индексов здесь нет.
     """
 
     attempt = models.ForeignKey(
@@ -54,6 +54,8 @@ class Answer(models.Model):
         related_name="answers",
         db_index=False,  # покрыт уникальным индексом (attempt, question)
     )
+    # Индекс по question запросам не нужен, но без него проверка PROTECT при удалении
+    # вопроса из черновика - это seq scan по миллиарду строк. Осознанный компромисс.
     question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="answers")
     selected_options = models.ManyToManyField(
         AnswerOption, through="AnswerChoice", related_name="+"

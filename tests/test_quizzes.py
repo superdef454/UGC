@@ -43,7 +43,7 @@ def test_publish(author_api, author, quiz_payload):
 def test_only_author_can_manage_quiz(respondent_api, author, quiz_payload):
     draft = make_draft(author, quiz_payload)
 
-    assert respondent_api.post(f"/api/my/quizzes/{draft.pk}/publish/").status_code == 403
+    assert respondent_api.post(f"/api/my/quizzes/{draft.pk}/publish/").status_code == 404
     assert respondent_api.get(f"/api/my/quizzes/{draft.pk}/").status_code == 404
 
 

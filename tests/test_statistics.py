@@ -108,6 +108,22 @@ def test_statistics_is_incremental(quiz, two_attempts):
     assert stats.data["questions"][str(question_id(quiz, 2))]["skipped_count"] == 2
 
 
+def test_long_pause_is_capped(quiz):
+    # Ушёл на сутки на втором вопросе и вернулся - в статистику идёт не больше 10 минут.
+    pass_quiz(
+        User.objects.create_user("sleepy"),
+        quiz,
+        [{"option_ids": [option_id(quiz, 0, 0)]}, {"option_ids": [option_id(quiz, 1, 0)]}, {}],
+        seconds=[10, 10 + 24 * 3600, 20 + 24 * 3600],
+    )
+
+    process_outbox_batch()
+
+    stats = QuizStatistics.objects.get(quiz=quiz)
+    assert stats.data["questions"][str(question_id(quiz, 1))]["total_time_ms"] == 600_000
+    assert stats.total_duration_ms == (10 + 600 + 10) * 1000
+
+
 def test_unfinished_attempts_are_not_counted(respondent, quiz):
     client_for(respondent).get(f"/api/quizzes/{quiz.pk}/next-question/")
     submit_answer(respondent, quiz.pk, question_id(quiz, 0), option_ids=[option_id(quiz, 0, 0)])
@@ -127,7 +143,7 @@ def test_empty_report(author_api, quiz):
 def test_statistics_is_only_for_author(respondent_api, quiz):
     response = respondent_api.get(f"/api/my/quizzes/{quiz.pk}/statistics/")
 
-    assert response.status_code == 403
+    assert response.status_code == 404
 
 
 def test_worker_command_drains_queue(quiz, two_attempts):

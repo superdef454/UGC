@@ -19,6 +19,9 @@ def enqueue_finished_attempt(attempt: Attempt) -> None:
     StatisticsOutbox.objects.create(attempt=attempt)
 
 
+MAX_QUESTION_TIME = timedelta(minutes=10)
+
+
 @dataclass
 class _QuizDelta:
     attempts_count: int = 0
@@ -27,7 +30,12 @@ class _QuizDelta:
 
 
 def _ms(delta: timedelta) -> int:
-    return max(0, round(delta.total_seconds() * 1000))
+    """Миллисекунды, не больше MAX_QUESTION_TIME.
+
+    Прохождение можно бросить и продолжить через день - без ограничения один
+    такой ответ испортил бы среднее время по вопросу и по опросу.
+    """
+    return max(0, round(min(delta, MAX_QUESTION_TIME).total_seconds() * 1000))
 
 
 def _collect_deltas(attempt_ids: list[int]) -> dict[int, _QuizDelta]:
@@ -35,7 +43,7 @@ def _collect_deltas(attempt_ids: list[int]) -> dict[int, _QuizDelta]:
     attempts = {
         attempt.pk: attempt
         for attempt in Attempt.objects.filter(pk__in=attempt_ids).only(
-            "id", "quiz_id", "started_at", "finished_at"
+            "id", "quiz_id", "started_at"
         )
     }
     choices: dict[int, list[int]] = defaultdict(list)
@@ -46,12 +54,10 @@ def _collect_deltas(attempt_ids: list[int]) -> dict[int, _QuizDelta]:
 
     deltas: dict[int, _QuizDelta] = defaultdict(_QuizDelta)
     for attempt in attempts.values():
-        delta = deltas[attempt.quiz_id]
-        delta.attempts_count += 1
-        if attempt.finished_at is not None:
-            delta.total_duration_ms += _ms(attempt.finished_at - attempt.started_at)
+        deltas[attempt.quiz_id].attempts_count += 1
 
     # Время на вопрос - от предыдущего ответа (для первого - от начала прохождения).
+    # Время прохождения - сумма времени на вопросы, то есть тоже без долгих пауз.
     previous_at: dict[int, datetime] = {pk: attempt.started_at for pk, attempt in attempts.items()}
     answers = (
         Answer.objects.filter(attempt_id__in=attempt_ids)
@@ -59,8 +65,11 @@ def _collect_deltas(attempt_ids: list[int]) -> dict[int, _QuizDelta]:
         .values_list("id", "attempt_id", "question_id", "custom_text", "answered_at")
     )
     for answer_id, attempt_id, question_id, custom_text, answered_at in answers:
-        stats = deltas[attempts[attempt_id].quiz_id].data.question(question_id)
-        stats.total_time_ms += _ms(answered_at - previous_at[attempt_id])
+        delta = deltas[attempts[attempt_id].quiz_id]
+        stats = delta.data.question(question_id)
+        spent = _ms(answered_at - previous_at[attempt_id])
+        stats.total_time_ms += spent
+        delta.total_duration_ms += spent
         previous_at[attempt_id] = answered_at
 
         picked = choices.get(answer_id, [])

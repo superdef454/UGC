@@ -1,11 +1,17 @@
+import logging
 import time
 from argparse import ArgumentParser
 from typing import Any
 
 from django.conf import settings
 from django.core.management.base import BaseCommand
+from django.db import connection
 
 from analytics.services import process_outbox_batch
+
+logger = logging.getLogger(__name__)
+
+MAX_BACKOFF = 60.0
 
 
 class Command(BaseCommand):
@@ -20,9 +26,24 @@ class Command(BaseCommand):
         self, *args: Any, once: bool, batch_size: int, interval: float, **options: Any
     ) -> None:
         self.stdout.write("Воркер статистики запущен")
+        backoff = interval
         try:
             while True:
-                processed = process_outbox_batch(batch_size)
+                try:
+                    processed = process_outbox_batch(batch_size)
+                except Exception:
+                    # Пачка откатилась и осталась в очереди. Не падаем в цикл рестартов,
+                    # а ждём с нарастающей паузой: база могла моргнуть.
+                    # TODO: счётчик попыток и dead-letter для пачки, которая падает всегда.
+                    if once:
+                        raise
+                    logger.exception("Не удалось обработать пачку, повтор через %.0f с", backoff)
+                    connection.close()
+                    time.sleep(backoff)
+                    backoff = min(backoff * 2, MAX_BACKOFF)
+                    continue
+
+                backoff = interval
                 if processed:
                     self.stdout.write(f"учтено прохождений: {processed}")
                 if processed == batch_size:

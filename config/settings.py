@@ -1,6 +1,8 @@
 import os
 from pathlib import Path
 
+from django.core.exceptions import ImproperlyConfigured
+
 BASE_DIR = Path(__file__).resolve().parent.parent
 
 
@@ -9,8 +11,12 @@ def env_bool(name: str, default: bool = False) -> bool:
     return os.environ.get(name, str(int(default))).lower() in {"1", "true", "yes", "on"}
 
 
+DEV_SECRET_KEY = "dev-secret-key"
+
 DEBUG = env_bool("DJANGO_DEBUG", default=True)
-SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", "dev-secret-key")
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY", DEV_SECRET_KEY)
+if not DEBUG and SECRET_KEY == DEV_SECRET_KEY:
+    raise ImproperlyConfigured("Без DEBUG нужен свой DJANGO_SECRET_KEY")
 ALLOWED_HOSTS = os.environ.get("DJANGO_ALLOWED_HOSTS", "localhost,127.0.0.1").split(",")
 CSRF_TRUSTED_ORIGINS = [
     origin for origin in os.environ.get("DJANGO_CSRF_TRUSTED_ORIGINS", "").split(",") if origin
@@ -68,7 +74,7 @@ DATABASES = {
         "NAME": os.environ.get("POSTGRES_DB", "ugc"),
         "USER": os.environ.get("POSTGRES_USER", "ugc"),
         "PASSWORD": os.environ.get("POSTGRES_PASSWORD", "ugc"),
-        "HOST": os.environ.get("POSTGRES_HOST", "localhost"),
+        "HOST": os.environ.get("POSTGRES_HOST", "127.0.0.1"),
         "PORT": os.environ.get("POSTGRES_PORT", "5444"),
         "CONN_MAX_AGE": 0,
         "OPTIONS": {

@@ -20,7 +20,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from analytics.reports import aget_quiz_report
 from attempts.models import Attempt
 from attempts.services import aget_passing_state, submit_answer, user_attempts
-from core.exceptions import DomainError, NotFoundError, PermissionDeniedError
+from core.exceptions import DomainError, NotFoundError
 from quizzes.models import Quiz
 from quizzes.services import aget_own_quiz, close_quiz, publish_quiz
 from quizzes.structure import aget_quiz_structure
@@ -107,6 +107,12 @@ async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
     except DomainError as exc:
         return await _render(request, "quiz_closed.html", {"message": exc.message}, status=400)
 
+    current_id = str(state.question.id) if state.question else None
+    if error and request.POST.get("question_id") != current_id:
+        # Форма была для уже отвеченного вопроса (двойной клик, «назад» в браузере):
+        # ответ уже сохранён, просто показываем текущий шаг без ошибки.
+        return redirect("web:take-quiz", pk=pk)
+
     context = {
         "state": state,
         "error": error,
@@ -123,7 +129,8 @@ async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
 async def my_attempts(request: HttpRequest) -> HttpResponse:
     """Мои прохождения: незавершённые можно продолжить."""
     user = await _current_user(request)
-    attempts = [attempt async for attempt in user_attempts(user)]
+    # TODO: пагинация, как в API.
+    attempts = [attempt async for attempt in user_attempts(user)[:PAGE_SIZE]]
     return await _render(request, "my_attempts.html", {"attempts": attempts})
 
 
@@ -154,8 +161,6 @@ async def _own_quiz(request: HttpRequest, pk: int) -> Quiz:
         return await aget_own_quiz(await _current_user(request), pk)
     except NotFoundError as exc:
         raise Http404(exc.message) from exc
-    except PermissionDeniedError as exc:
-        raise PermissionDenied(exc.message) from exc
 
 
 async def _quiz_detail(request: HttpRequest, quiz: Quiz, error: str | None = None) -> HttpResponse:

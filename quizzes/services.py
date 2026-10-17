@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Count, QuerySet
 from django.utils import timezone
 
-from core.exceptions import DomainError, NotFoundError, PermissionDeniedError
+from core.exceptions import DomainError, NotFoundError
 from quizzes.models import AnswerOption, Question, Quiz
 from users.models import User
 
@@ -34,10 +34,9 @@ class QuizInput(TypedDict):
 
 
 def _check_owner(user: User, quiz: Quiz | None) -> Quiz:
-    if quiz is None:
+    # Чужой опрос - тоже 404, а не 403: иначе по коду ответа можно перебирать чужие черновики.
+    if quiz is None or quiz.author_id != user.pk:
         raise NotFoundError("Опрос не найден")
-    if quiz.author_id != user.pk:
-        raise PermissionDeniedError("Это не ваш опрос")
     return quiz
 
 

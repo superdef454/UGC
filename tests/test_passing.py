@@ -83,7 +83,7 @@ def test_attempt_can_be_continued(respondent_api, quiz):
     assert response.json()["question"]["id"] == question_id(quiz, 1)
     assert response.json()["progress"]["answered"] == 1
 
-    in_progress = respondent_api.get("/api/attempts/?status=in_progress").json()
+    in_progress = respondent_api.get("/api/attempts/?status=in_progress").json()["results"]
     assert [(a["quiz_id"], a["answered_count"], a["questions_count"]) for a in in_progress] == [
         (quiz.pk, 1, 3)
     ]

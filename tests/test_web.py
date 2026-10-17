@@ -53,6 +53,16 @@ def test_error_keeps_choice(browser, quiz):
     assert f'value="{picked}" checked' in html
 
 
+def test_double_click_is_not_an_error(browser, quiz):
+    browser.get(f"/quizzes/{quiz.pk}/")
+    data = {"question_id": question_id(quiz, 0), "option": [option_id(quiz, 0, 0)]}
+
+    first = browser.post(f"/quizzes/{quiz.pk}/", data)
+    second = browser.post(f"/quizzes/{quiz.pk}/", data)
+
+    assert first.status_code == second.status_code == 302
+
+
 def test_author_pages(author, quiz):
     client = Client()
     client.force_login(author)
@@ -65,4 +75,4 @@ def test_author_pages(author, quiz):
 
 
 def test_statistics_page_is_only_for_author(browser, quiz):
-    assert browser.get(f"/my/{quiz.pk}/statistics/").status_code == 403
+    assert browser.get(f"/my/{quiz.pk}/statistics/").status_code == 404
