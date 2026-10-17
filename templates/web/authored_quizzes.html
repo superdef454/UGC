@@ -14,7 +14,7 @@
     {% for quiz in quizzes %}
       <li class="row">
         <div class="row__main">
-          <h2 class="row__title"><a href="{% url 'web:quiz-detail' quiz.pk %}">{{ quiz.title }}</a></h2>
+          <h2 class="row__title"><a href="{% url 'web:quiz-manage' quiz.pk %}">{{ quiz.title }}</a></h2>
           <p class="row__meta">
             {{ quiz.questions_count }} {{ quiz.questions_count|ru_plural:"вопрос,вопроса,вопросов" }},
             {% if quiz.status == "draft" %}создан {{ quiz.created_at|date:"j E" }}{% else %}прошли {{ quiz.attempts_count }} {{ quiz.attempts_count|ru_plural:"раз,раза,раз" }}{% endif %}

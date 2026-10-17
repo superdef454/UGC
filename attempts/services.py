@@ -8,7 +8,7 @@ from django.utils import timezone
 
 from analytics.services import enqueue_finished_attempt
 from attempts.models import Answer, AnswerChoice, Attempt
-from core.exceptions import DomainError, NotFoundError
+from core.exceptions import ConflictError, DomainError, NotFoundError
 from moderation.services import check_text
 from quizzes.models import Question, Quiz
 from quizzes.structure import QuestionItem, QuizStructure, aget_quiz_structure, get_quiz_structure
@@ -28,26 +28,29 @@ class Progress:
 
 
 @dataclass(frozen=True, slots=True)
-class PassingState:
-    """Где сейчас пользователь в опросе: следующий вопрос и прогресс."""
+class AttemptState:
+    """Прохождение глазами участника: прогресс и вопрос, на который нужно ответить."""
 
-    attempt_id: int
+    id: int
     quiz_id: int
     quiz_title: str
-    is_finished: bool
-    question: QuestionItem | None
+    status: str
     progress: Progress
+    next_question: QuestionItem | None
+
+    @property
+    def is_finished(self) -> bool:
+        return self.status == Attempt.Status.FINISHED
 
 
-def _state(attempt: Attempt, structure: QuizStructure, answered_ids: set[int]) -> PassingState:
-    question = structure.next_question(answered_ids)
-    return PassingState(
-        attempt_id=attempt.pk,
+def _state(attempt: Attempt, structure: QuizStructure, answered_ids: set[int]) -> AttemptState:
+    return AttemptState(
+        id=attempt.pk,
         quiz_id=structure.quiz_id,
         quiz_title=structure.title,
-        is_finished=question is None,
-        question=question,
+        status=attempt.status,
         progress=Progress(answered=len(answered_ids), total=len(structure.questions)),
+        next_question=structure.next_question(answered_ids),
     )
 
 
@@ -56,27 +59,49 @@ def _answered_ids(attempt: Attempt) -> QuerySet[Answer, int]:
     return Answer.objects.filter(attempt=attempt).values_list("question_id", flat=True)
 
 
-async def aget_passing_state(user: User, quiz_id: int) -> PassingState:
-    """Следующий вопрос для пользователя с учётом прогресса.
-
-    При первом обращении создаёт прохождение, при повторном - продолжает его
-    с первого неотвеченного вопроса.
-    """
-    quiz = await Quiz.objects.exclude(status=Quiz.Status.DRAFT).filter(pk=quiz_id).afirst()
-    if quiz is None:
-        raise NotFoundError("Опрос не найден")
-
-    if quiz.status == Quiz.Status.PUBLISHED:
-        attempt, _ = await Attempt.objects.aget_or_create(user=user, quiz=quiz)
-    else:
-        found = await Attempt.objects.filter(user=user, quiz=quiz).afirst()
-        if found is None or found.status != Attempt.Status.FINISHED:
-            raise DomainError("Опрос закрыт")
-        attempt = found
-
+async def _astate(attempt: Attempt, quiz: Quiz) -> AttemptState:
     structure = await aget_quiz_structure(quiz)
     answered_ids = {question_id async for question_id in _answered_ids(attempt)}
     return _state(attempt, structure, answered_ids)
+
+
+async def _aget_visible_quiz(quiz_id: int) -> Quiz:
+    quiz = await Quiz.objects.exclude(status=Quiz.Status.DRAFT).filter(pk=quiz_id).afirst()
+    if quiz is None:
+        raise NotFoundError("Опрос не найден")
+    return quiz
+
+
+async def astart_attempt(user: User, quiz_id: int) -> tuple[AttemptState, bool]:
+    """Начинает прохождение опроса или возвращает уже начатое.
+
+    Идемпотентно: повторный вызов не создаёт второе прохождение
+    (это гарантирует и уникальный индекс (user, quiz)).
+
+    Returns:
+        Состояние прохождения и признак, что оно только что создано.
+    """
+    quiz = await _aget_visible_quiz(quiz_id)
+    if quiz.status == Quiz.Status.PUBLISHED:
+        attempt, created = await Attempt.objects.aget_or_create(user=user, quiz=quiz)
+        return await _astate(attempt, quiz), created
+
+    attempt_or_none = await Attempt.objects.filter(user=user, quiz=quiz).afirst()
+    if attempt_or_none is None:
+        raise ConflictError("Опрос закрыт")
+    return await _astate(attempt_or_none, quiz), False
+
+
+async def aget_attempt_state(user: User, quiz_id: int) -> AttemptState:
+    """Текущее прохождение опроса: прогресс и следующий вопрос.
+
+    Ничего не создаёт - прохождение начинается явно через :func:`astart_attempt`.
+    """
+    quiz = await _aget_visible_quiz(quiz_id)
+    attempt = await Attempt.objects.filter(user=user, quiz=quiz).afirst()
+    if attempt is None:
+        raise NotFoundError("Прохождение не начато")
+    return await _astate(attempt, quiz)
 
 
 def _validate_answer(question: QuestionItem, option_ids: list[int], custom_text: str) -> None:
@@ -100,8 +125,8 @@ def submit_answer(
     question_id: int,
     option_ids: Sequence[int] = (),
     custom_text: str = "",
-) -> PassingState:
-    """Сохраняет ответ на текущий вопрос и возвращает следующий шаг.
+) -> AttemptState:
+    """Сохраняет ответ на текущий вопрос и возвращает обновлённое прохождение.
 
     Пустой ответ на необязательный вопрос - это пропуск. После последнего
     вопроса прохождение завершается и попадает в очередь на статистику.
@@ -119,17 +144,17 @@ def submit_answer(
             .first()
         )
         if attempt is None:
-            raise NotFoundError("Прохождение не найдено, сначала запросите вопрос")
+            raise NotFoundError("Прохождение не начато")
         if attempt.status == Attempt.Status.FINISHED:
-            raise DomainError("Опрос уже пройден")
+            raise ConflictError("Опрос уже пройден")
         if attempt.quiz.status != Quiz.Status.PUBLISHED:
-            raise DomainError("Опрос закрыт")
+            raise ConflictError("Опрос закрыт")
 
         structure = get_quiz_structure(attempt.quiz)
         answered_ids = set(_answered_ids(attempt))
         current = structure.next_question(answered_ids)
         if current is None or current.id != question_id:
-            raise DomainError("Можно ответить только на текущий вопрос")
+            raise ConflictError("Можно ответить только на текущий вопрос")
         _validate_answer(current, option_ids, custom_text)
 
         answer = Answer.objects.create(
@@ -170,5 +195,5 @@ def user_attempts(user: User) -> QuerySet[Attempt]:
             answered_count=Coalesce(Subquery(answered), 0),
             questions_count=Coalesce(Subquery(total), 0),
         )
-        .order_by("-started_at")
+        .order_by("-started_at", "-id")
     )

@@ -4,7 +4,7 @@ from django.db import transaction
 from django.db.models import Count, QuerySet
 from django.utils import timezone
 
-from core.exceptions import DomainError, NotFoundError
+from core.exceptions import ConflictError, DomainError, NotFoundError
 from quizzes.models import AnswerOption, Question, Quiz
 from users.models import User
 
@@ -86,7 +86,7 @@ def publish_quiz(user: User, quiz_id: int) -> Quiz:
     """Публикует черновик. После этого структура опроса больше не меняется."""
     quiz = get_own_quiz(user, quiz_id, for_update=True)
     if quiz.status != Quiz.Status.DRAFT:
-        raise DomainError("Опубликовать можно только черновик")
+        raise ConflictError("Опубликовать можно только черновик")
 
     questions = list(quiz.questions.annotate(options_count=Count("options")))
     if not questions:
@@ -107,7 +107,7 @@ def close_quiz(user: User, quiz_id: int) -> Quiz:
     """Закрывает опрос: новые ответы больше не принимаются."""
     quiz = get_own_quiz(user, quiz_id, for_update=True)
     if quiz.status != Quiz.Status.PUBLISHED:
-        raise DomainError("Закрыть можно только опубликованный опрос")
+        raise ConflictError("Закрыть можно только опубликованный опрос")
     quiz.status = Quiz.Status.CLOSED
     quiz.save(update_fields=["status", "updated_at"])
     return quiz
@@ -132,19 +132,19 @@ def reorder_questions(user: User, quiz_id: int, question_ids: list[int]) -> None
     """Задаёт новый порядок вопросов черновика."""
     quiz = get_own_quiz(user, quiz_id, for_update=True)
     if not quiz.is_editable:
-        raise DomainError("Порядок можно менять только у черновика")
+        raise ConflictError("Порядок можно менять только у черновика")
     _apply_order(Question.objects.filter(quiz=quiz), question_ids)
 
 
 @transaction.atomic
-def reorder_options(user: User, question_id: int, option_ids: list[int]) -> None:
+def reorder_options(user: User, quiz_id: int, question_id: int, option_ids: list[int]) -> None:
     """Задаёт новый порядок вариантов ответа у вопроса черновика."""
-    question = Question.objects.filter(pk=question_id).first()
+    quiz = get_own_quiz(user, quiz_id, for_update=True)
+    question = Question.objects.filter(pk=question_id, quiz=quiz).first()
     if question is None:
         raise NotFoundError("Вопрос не найден")
-    quiz = get_own_quiz(user, question.quiz_id, for_update=True)
     if not quiz.is_editable:
-        raise DomainError("Порядок можно менять только у черновика")
+        raise ConflictError("Порядок можно менять только у черновика")
     _apply_order(AnswerOption.objects.filter(question=question), option_ids)
 
 

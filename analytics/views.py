@@ -5,17 +5,18 @@ from rest_framework.response import Response
 
 from analytics.reports import aget_quiz_report
 from analytics.serializers import QuizReportSerializer
+from core.schema import errors
 from users.utils import request_user
 
 
 class QuizStatisticsView(APIView):
-    """Статистика по моему опросу.
+    """Статистика опроса. Доступна только автору, для остальных - 404.
 
     Отдаётся уже посчитанная статистика: ответы при запросе не агрегируются,
     это делает воркер. Данные отстают от реальности на пару секунд.
     """
 
-    @extend_schema(responses=QuizReportSerializer)
-    async def get(self, request: Request, pk: int) -> Response:
-        report = await aget_quiz_report(request_user(request), pk)
+    @extend_schema(responses={200: QuizReportSerializer, **errors(404)})
+    async def get(self, request: Request, quiz_id: int) -> Response:
+        report = await aget_quiz_report(request_user(request), quiz_id)
         return Response(QuizReportSerializer(report).data)

@@ -1,7 +1,7 @@
 """Страницы сайта.
 
-Тонкие async view поверх тех же сервисов, что и API. Пользователя берём через
-``request.auser()`` и кладём в контекст явно: ленивый ``request.user`` в async
+Тонкие async view поверх тех же сервисов, что и API. Пользователь берётся через
+``request.auser()`` и кладётся в контекст явно: ленивый ``request.user`` в async
 view полез бы в базу синхронно.
 """
 
@@ -19,7 +19,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from analytics.reports import aget_quiz_report
 from attempts.models import Attempt
-from attempts.services import aget_passing_state, submit_answer, user_attempts
+from attempts.services import aget_attempt_state, astart_attempt, submit_answer, user_attempts
 from core.exceptions import DomainError, NotFoundError
 from quizzes.models import Quiz
 from quizzes.services import aget_own_quiz, close_quiz, publish_quiz
@@ -31,7 +31,7 @@ PAGE_SIZE = 50
 
 @dataclass(frozen=True, slots=True)
 class QuizRow:
-    """Строка списка доступных опросов: опрос и моё прохождение, если есть."""
+    """Строка каталога: опрос и прохождение текущего пользователя, если оно есть."""
 
     quiz: Quiz
     attempt: Attempt | None
@@ -83,7 +83,7 @@ async def quiz_list(request: HttpRequest) -> HttpResponse:
 @login_required
 @require_http_methods(["GET", "POST"])
 async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
-    """Прохождение опроса: один вопрос на странице."""
+    """Прохождение опроса: один вопрос на странице. Если прохождение не начато - приглашение."""
     user = await _current_user(request)
     error = None
     if request.method == "POST":
@@ -101,13 +101,11 @@ async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
             error = exc.message
 
     try:
-        state = await aget_passing_state(user, pk)
-    except NotFoundError as exc:
-        raise Http404(exc.message) from exc
-    except DomainError as exc:
-        return await _render(request, "quiz_closed.html", {"message": exc.message}, status=400)
+        state = await aget_attempt_state(user, pk)
+    except NotFoundError:
+        return await _quiz_intro(request, pk)
 
-    current_id = str(state.question.id) if state.question else None
+    current_id = str(state.next_question.id) if state.next_question else None
     if error and request.POST.get("question_id") != current_id:
         # Форма была для уже отвеченного вопроса (двойной клик, «назад» в браузере):
         # ответ уже сохранён, просто показываем текущий шаг без ошибки.
@@ -124,20 +122,47 @@ async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
     return await _render(request, "take_quiz.html", context, status=400 if error else 200)
 
 
+async def _quiz_intro(request: HttpRequest, pk: int) -> HttpResponse:
+    quiz = (
+        await Quiz.objects.exclude(status=Quiz.Status.DRAFT)
+        .with_questions_count()
+        .filter(pk=pk)
+        .afirst()
+    )
+    if quiz is None:
+        raise Http404("Опрос не найден")
+    if quiz.status != Quiz.Status.PUBLISHED:
+        return await _render(request, "quiz_closed.html", {"message": "Опрос закрыт"}, status=409)
+    return await _render(request, "quiz_intro.html", {"quiz": quiz})
+
+
+@login_required
+@require_POST
+async def start_quiz(request: HttpRequest, pk: int) -> HttpResponse:
+    """Начинает прохождение (или продолжает начатое) и ведёт к текущему вопросу."""
+    try:
+        await astart_attempt(await _current_user(request), pk)
+    except NotFoundError as exc:
+        raise Http404(exc.message) from exc
+    except DomainError as exc:
+        return await _render(request, "quiz_closed.html", {"message": exc.message}, status=409)
+    return redirect("web:take-quiz", pk=pk)
+
+
 @login_required
 @require_GET
-async def my_attempts(request: HttpRequest) -> HttpResponse:
-    """Мои прохождения: незавершённые можно продолжить."""
+async def attempt_list(request: HttpRequest) -> HttpResponse:
+    """Прохождения текущего пользователя: незавершённые можно продолжить."""
     user = await _current_user(request)
     # TODO: пагинация, как в API.
     attempts = [attempt async for attempt in user_attempts(user)[:PAGE_SIZE]]
-    return await _render(request, "my_attempts.html", {"attempts": attempts})
+    return await _render(request, "attempt_list.html", {"attempts": attempts})
 
 
 @login_required
 @require_GET
-async def my_quizzes(request: HttpRequest) -> HttpResponse:
-    """Опросы, которые я создал."""
+async def authored_quizzes(request: HttpRequest) -> HttpResponse:
+    """Опросы, созданные текущим пользователем."""
     user = await _current_user(request)
     quizzes = [
         quiz
@@ -146,7 +171,7 @@ async def my_quizzes(request: HttpRequest) -> HttpResponse:
         .annotate(attempts_count=Coalesce(F("statistics__attempts_count"), Value(0)))
         .order_by("-created_at")[:PAGE_SIZE]
     ]
-    return await _render(request, "my_quizzes.html", {"quizzes": quizzes})
+    return await _render(request, "authored_quizzes.html", {"quizzes": quizzes})
 
 
 @login_required
@@ -163,17 +188,17 @@ async def _own_quiz(request: HttpRequest, pk: int) -> Quiz:
         raise Http404(exc.message) from exc
 
 
-async def _quiz_detail(request: HttpRequest, quiz: Quiz, error: str | None = None) -> HttpResponse:
+async def _quiz_manage(request: HttpRequest, quiz: Quiz, error: str | None = None) -> HttpResponse:
     structure = await aget_quiz_structure(quiz)
     context = {"quiz": quiz, "structure": structure, "error": error}
-    return await _render(request, "quiz_detail.html", context, status=400 if error else 200)
+    return await _render(request, "quiz_manage.html", context, status=409 if error else 200)
 
 
 @login_required
 @require_GET
-async def quiz_detail(request: HttpRequest, pk: int) -> HttpResponse:
-    """Мой опрос: структура и управление."""
-    return await _quiz_detail(request, await _own_quiz(request, pk))
+async def quiz_manage(request: HttpRequest, pk: int) -> HttpResponse:
+    """Управление опросом: структура, публикация, закрытие. Только для автора."""
+    return await _quiz_manage(request, await _own_quiz(request, pk))
 
 
 @login_required
@@ -187,14 +212,14 @@ async def quiz_action(request: HttpRequest, pk: int, action: str) -> HttpRespons
     try:
         await sync_to_async(services[action])(await _current_user(request), quiz.pk)
     except DomainError as exc:
-        return await _quiz_detail(request, quiz, error=exc.message)
-    return redirect("web:quiz-detail", pk=pk)
+        return await _quiz_manage(request, quiz, error=exc.message)
+    return redirect("web:quiz-manage", pk=pk)
 
 
 @login_required
 @require_GET
 async def quiz_statistics(request: HttpRequest, pk: int) -> HttpResponse:
-    """Статистика моего опроса."""
+    """Статистика опроса. Только для автора."""
     quiz = await _own_quiz(request, pk)
     report = await aget_quiz_report(await _current_user(request), quiz.pk)
     return await _render(request, "statistics.html", {"report": report})

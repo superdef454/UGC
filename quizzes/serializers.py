@@ -75,7 +75,7 @@ class QuizListSerializer(serializers.ModelSerializer):
         )
 
 
-class MyQuizListSerializer(QuizListSerializer):
+class AuthoredQuizSerializer(QuizListSerializer):
     attempts_count = serializers.IntegerField(read_only=True)
 
     class Meta(QuizListSerializer.Meta):

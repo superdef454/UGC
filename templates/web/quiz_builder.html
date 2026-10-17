@@ -4,14 +4,14 @@
 {% block title %}Новый опрос{% endblock %}
 
 {% block content %}
-<a class="back" href="{% url 'web:my-quizzes' %}">Мои опросы</a>
+<a class="back" href="{% url 'web:authored-quizzes' %}">Мои опросы</a>
 
 <div class="page-head">
   <h1 class="page-title">Новый опрос</h1>
   <p class="lead">Вопросы и варианты показываются участникам в том порядке, в каком они здесь.</p>
 </div>
 
-<form class="builder" id="builder" data-api="{% url 'my-quiz-list' %}" data-detail="{% url 'web:quiz-detail' 0 %}">
+<form class="builder" id="builder" data-api="{% url 'quiz-list' %}" data-detail="{% url 'web:quiz-manage' 0 %}">
   {% csrf_token %}
   <p class="alert" role="alert" id="builder-error" hidden></p>
 

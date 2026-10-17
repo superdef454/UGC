@@ -509,6 +509,10 @@ textarea {
   justify-items: start;
 }
 
+.sheet--done .question__text {
+  margin-bottom: 0;
+}
+
 .choices {
   border: 0;
   margin: 0;
@@ -592,7 +596,7 @@ textarea {
   outline-offset: 2px;
 }
 
-/* Мой опрос */
+/* Управление опросом */
 
 .outline {
   margin: 0;

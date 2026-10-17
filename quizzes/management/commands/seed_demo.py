@@ -10,7 +10,7 @@ from django.utils import timezone
 
 from analytics.services import process_outbox_batch
 from attempts.models import Answer, Attempt
-from attempts.services import aget_passing_state, submit_answer
+from attempts.services import astart_attempt, submit_answer
 from quizzes.models import Quiz
 from quizzes.services import QuizInput, create_quiz, publish_quiz
 from users.models import User
@@ -105,8 +105,8 @@ class Command(BaseCommand):
         return user
 
     def _pass(self, user: User, quiz: Quiz, rng: random.Random) -> None:
-        state = async_to_sync(aget_passing_state)(user, quiz.pk)
-        while (question := state.question) is not None:
+        state, _ = async_to_sync(astart_attempt)(user, quiz.pk)
+        while (question := state.next_question) is not None:
             options = [option.id for option in question.options]
             picked = rng.sample(options, rng.randint(1, 3)) if question.is_multiple else []
             custom = ""

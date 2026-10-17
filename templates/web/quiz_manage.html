@@ -3,7 +3,7 @@
 {% block title %}{{ quiz.title }}{% endblock %}
 
 {% block content %}
-<a class="back" href="{% url 'web:my-quizzes' %}">Мои опросы</a>
+<a class="back" href="{% url 'web:authored-quizzes' %}">Мои опросы</a>
 
 <div class="page-head">
   <span class="badge badge--{{ quiz.status }}">{{ quiz.get_status_display }}</span>
@@ -15,7 +15,7 @@
 
 <div class="toolbar">
   {% if quiz.status == "draft" %}
-    <form method="post" action="{% url 'web:quiz-action' quiz.pk 'publish' %}">
+    <form method="post" action="{% url 'web:quiz-publish' quiz.pk %}">
       {% csrf_token %}
       <button class="button" type="submit">Опубликовать</button>
     </form>
@@ -23,7 +23,7 @@
   {% else %}
     <a class="button" href="{% url 'web:quiz-statistics' quiz.pk %}">Статистика</a>
     {% if quiz.status == "published" %}
-      <form method="post" action="{% url 'web:quiz-action' quiz.pk 'close' %}">
+      <form method="post" action="{% url 'web:quiz-close' quiz.pk %}">
         {% csrf_token %}
         <button class="button button--ghost" type="submit">Закрыть опрос</button>
       </form>

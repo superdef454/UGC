@@ -1,0 +1,778 @@
+openapi: 3.0.3
+info:
+  title: UGC опросы
+  version: 0.1.0
+  description: Создание опросов, прохождение и статистика
+paths:
+  /api/v1/attempts/:
+    get:
+      operationId: v1_attempts_list
+      description: Прохождения текущего пользователя. ``?status=in_progress`` - что
+        можно продолжить.
+      parameters:
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - finished
+          - in_progress
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Attempt'
+          description: ''
+  /api/v1/quizzes/:
+    get:
+      operationId: v1_quizzes_list
+      description: Каталог опубликованных опросов и создание нового.
+      parameters:
+      - in: query
+        name: author
+        schema:
+          type: string
+          enum:
+          - me
+        description: me - опросы текущего пользователя в любом статусе, включая черновики
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - closed
+          - draft
+          - published
+        description: фильтр по статусу, только вместе с author=me
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AuthoredQuiz'
+          description: ''
+    post:
+      operationId: v1_quizzes_create
+      description: Каталог опубликованных опросов и создание нового.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/QuizCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/QuizCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/QuizCreate'
+        required: true
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizDetail'
+          description: ''
+  /api/v1/quizzes/{id}/:
+    get:
+      operationId: v1_quizzes_retrieve
+      description: Опрос со всей структурой. Черновик виден только автору.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizDetail'
+          description: ''
+  /api/v1/quizzes/{id}/attempt/:
+    get:
+      operationId: v1_quizzes_attempt_retrieve
+      description: |-
+        Прохождение опроса текущим пользователем - одно на пару пользователь + опрос.
+
+        GET отдаёт прогресс и следующий вопрос (``next_question``) и ничего не меняет,
+        POST начинает прохождение.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptState'
+          description: ''
+    post:
+      operationId: v1_quizzes_attempt_create
+      description: Начинает прохождение. Если оно уже есть - возвращает его со статусом
+        200.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptState'
+          description: ''
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptState'
+          description: ''
+  /api/v1/quizzes/{id}/attempt/answers/:
+    post:
+      operationId: v1_quizzes_attempt_answers_create
+      description: Ответ на текущий вопрос. В ответе - обновлённое прохождение со
+        следующим вопросом.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerInput'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/AnswerInput'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AnswerInput'
+        required: true
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AttemptState'
+          description: ''
+  /api/v1/quizzes/{id}/close/:
+    post:
+      operationId: v1_quizzes_close_create
+      description: 'Закрытие опроса: новые прохождения и ответы больше не принимаются.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizDetail'
+          description: ''
+  /api/v1/quizzes/{id}/publish/:
+    post:
+      operationId: v1_quizzes_publish_create
+      description: Публикация черновика. После неё структура опроса не меняется.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizDetail'
+          description: ''
+  /api/v1/quizzes/{id}/questions/{question_pk}/options/order/:
+    put:
+      operationId: v1_quizzes_questions_options_order_update
+      description: 'Порядок вариантов ответа: все id вариантов вопроса в нужном порядке.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: question_pk
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Order'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Order'
+        required: true
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/quizzes/{id}/questions/order/:
+    put:
+      operationId: v1_quizzes_questions_order_update
+      description: 'Порядок вопросов черновика: все id вопросов опроса в нужном порядке.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Order'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Order'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Order'
+        required: true
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/quizzes/{id}/statistics/:
+    get:
+      operationId: v1_quizzes_statistics_retrieve
+      description: |-
+        Статистика опроса. Доступна только автору, для остальных - 404.
+
+        Отдаётся уже посчитанная статистика: ответы при запросе не агрегируются,
+        это делает воркер. Данные отстают от реальности на пару секунд.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - UserIdHeader: []
+      - cookieAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/QuizReport'
+          description: ''
+components:
+  schemas:
+    AnswerInput:
+      type: object
+      description: Ответ на текущий вопрос. Пустой ответ на необязательный вопрос
+        - пропуск.
+      properties:
+        question_id:
+          type: integer
+          minimum: 1
+        option_ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          maxItems: 50
+        custom_text:
+          type: string
+          default: ''
+          maxLength: 1000
+      required:
+      - question_id
+    AnswerOption:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        text:
+          type: string
+          title: Текст
+          maxLength: 500
+        order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+      required:
+      - id
+      - order
+      - text
+    Attempt:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        quiz_id:
+          type: integer
+        quiz_title:
+          type: string
+        status:
+          $ref: '#/components/schemas/AttemptStatusEnum'
+        started_at:
+          type: string
+          format: date-time
+          readOnly: true
+        finished_at:
+          type: string
+          format: date-time
+          nullable: true
+        answered_count:
+          type: integer
+        questions_count:
+          type: integer
+      required:
+      - answered_count
+      - id
+      - questions_count
+      - quiz_id
+      - quiz_title
+      - started_at
+    AttemptState:
+      type: object
+      description: 'Прохождение: прогресс и вопрос, на который нужно ответить (null
+        - опрос пройден).'
+      properties:
+        id:
+          type: integer
+        quiz_id:
+          type: integer
+        quiz_title:
+          type: string
+        status:
+          $ref: '#/components/schemas/AttemptStatusEnum'
+        progress:
+          $ref: '#/components/schemas/Progress'
+        next_question:
+          allOf:
+          - $ref: '#/components/schemas/QuestionItem'
+          nullable: true
+      required:
+      - id
+      - next_question
+      - progress
+      - quiz_id
+      - quiz_title
+      - status
+    AttemptStatusEnum:
+      enum:
+      - in_progress
+      - finished
+      type: string
+      description: |-
+        * `in_progress` - В процессе
+        * `finished` - Завершено
+    AuthoredQuiz:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Название
+          maxLength: 255
+        description:
+          type: string
+          title: Описание
+        status:
+          $ref: '#/components/schemas/QuizStatusEnum'
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        questions_count:
+          type: integer
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        attempts_count:
+          type: integer
+          readOnly: true
+      required:
+      - attempts_count
+      - created_at
+      - id
+      - questions_count
+      - title
+    OptionInput:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 500
+      required:
+      - text
+    OptionItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+      required:
+      - id
+      - text
+    OptionReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        count:
+          type: integer
+        percent:
+          type: integer
+        is_top:
+          type: boolean
+      required:
+      - count
+      - id
+      - is_top
+      - percent
+      - text
+    Order:
+      type: object
+      properties:
+        ids:
+          type: array
+          items:
+            type: integer
+            minimum: 1
+          minItems: 1
+      required:
+      - ids
+    Progress:
+      type: object
+      properties:
+        answered:
+          type: integer
+        total:
+          type: integer
+        percent:
+          type: integer
+      required:
+      - answered
+      - percent
+      - total
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        text:
+          type: string
+          title: Текст
+          maxLength: 1000
+        type:
+          $ref: '#/components/schemas/TypeEnum'
+        order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        is_required:
+          type: boolean
+          title: Обязательный
+        allow_custom_answer:
+          type: boolean
+          title: Можно свой ответ
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/AnswerOption'
+          readOnly: true
+      required:
+      - id
+      - options
+      - order
+      - text
+    QuestionInput:
+      type: object
+      properties:
+        text:
+          type: string
+          maxLength: 1000
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          default: single
+        allow_custom_answer:
+          type: boolean
+          default: false
+        is_required:
+          type: boolean
+          default: true
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionInput'
+          maxItems: 20
+      required:
+      - text
+    QuestionItem:
+      type: object
+      properties:
+        id:
+          type: integer
+        text:
+          type: string
+        type:
+          type: string
+        order:
+          type: integer
+        is_required:
+          type: boolean
+        allow_custom_answer:
+          type: boolean
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionItem'
+      required:
+      - allow_custom_answer
+      - id
+      - is_required
+      - options
+      - order
+      - text
+      - type
+    QuestionReport:
+      type: object
+      properties:
+        id:
+          type: integer
+        order:
+          type: integer
+        text:
+          type: string
+        type:
+          type: string
+        answers_count:
+          type: integer
+        skipped_count:
+          type: integer
+        allow_custom_answer:
+          type: boolean
+        custom_count:
+          type: integer
+        custom_percent:
+          type: integer
+        avg_time_seconds:
+          type: number
+          format: double
+          nullable: true
+        is_slowest:
+          type: boolean
+        options:
+          type: array
+          items:
+            $ref: '#/components/schemas/OptionReport'
+      required:
+      - allow_custom_answer
+      - answers_count
+      - avg_time_seconds
+      - custom_count
+      - custom_percent
+      - id
+      - is_slowest
+      - options
+      - order
+      - skipped_count
+      - text
+      - type
+    QuizCreate:
+      type: object
+      description: 'Опрос целиком: порядок вопросов и вариантов - порядок в списках.'
+      properties:
+        title:
+          type: string
+          maxLength: 255
+        description:
+          type: string
+          default: ''
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionInput'
+          maxItems: 100
+          minItems: 1
+      required:
+      - questions
+      - title
+    QuizDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        title:
+          type: string
+          title: Название
+          maxLength: 255
+        description:
+          type: string
+          title: Описание
+        status:
+          $ref: '#/components/schemas/QuizStatusEnum'
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        published_at:
+          type: string
+          format: date-time
+          nullable: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/Question'
+          readOnly: true
+      required:
+      - created_at
+      - id
+      - questions
+      - title
+    QuizReport:
+      type: object
+      properties:
+        quiz_id:
+          type: integer
+        title:
+          type: string
+        status:
+          type: string
+        attempts_count:
+          type: integer
+        avg_duration_seconds:
+          type: number
+          format: double
+          nullable: true
+        questions:
+          type: array
+          items:
+            $ref: '#/components/schemas/QuestionReport'
+        updated_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - attempts_count
+      - avg_duration_seconds
+      - questions
+      - quiz_id
+      - status
+      - title
+      - updated_at
+    QuizStatusEnum:
+      enum:
+      - draft
+      - published
+      - closed
+      type: string
+      description: |-
+        * `draft` - Черновик
+        * `published` - Опубликован
+        * `closed` - Закрыт
+    TypeEnum:
+      enum:
+      - single
+      - multiple
+      type: string
+      description: |-
+        * `single` - Один вариант
+        * `multiple` - Несколько вариантов
+  securitySchemes:
+    UserIdHeader:
+      type: apiKey
+      in: header
+      name: X-User-Id
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid

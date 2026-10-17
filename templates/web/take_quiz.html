@@ -18,7 +18,7 @@
       <a class="button" href="{% url 'web:quiz-list' %}">К другим опросам</a>
     </section>
   {% else %}
-    {% with q=state.question %}
+    {% with q=state.next_question %}
     <form method="post" class="sheet question">
       {% csrf_token %}
       <input type="hidden" name="question_id" value="{{ q.id }}">

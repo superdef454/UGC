@@ -24,13 +24,15 @@ class ProgressSerializer(serializers.Serializer):
     percent = serializers.IntegerField()
 
 
-class PassingStateSerializer(serializers.Serializer):
-    attempt_id = serializers.IntegerField()
+class AttemptStateSerializer(serializers.Serializer):
+    """Прохождение: прогресс и вопрос, на который нужно ответить (null - опрос пройден)."""
+
+    id = serializers.IntegerField()
     quiz_id = serializers.IntegerField()
     quiz_title = serializers.CharField()
-    is_finished = serializers.BooleanField()
-    question = QuestionItemSerializer(allow_null=True)
+    status = serializers.ChoiceField(choices=Attempt.Status.choices)
     progress = ProgressSerializer()
+    next_question = QuestionItemSerializer(allow_null=True)
 
 
 class AnswerInputSerializer(serializers.Serializer):

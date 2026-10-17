@@ -16,7 +16,7 @@ pytestmark = pytest.mark.django_db
 
 def pass_quiz(user: User, quiz: Quiz, answers: list[dict], seconds: list[int]) -> None:
     """Проходит опрос и выставляет время ответов: ``seconds`` - от начала прохождения."""
-    client_for(user).get(f"/api/quizzes/{quiz.pk}/next-question/")
+    client_for(user).post(f"/api/v1/quizzes/{quiz.pk}/attempt/")
     for index, answer in enumerate(answers):
         submit_answer(user, quiz.pk, question_id(quiz, index), **answer)
 
@@ -60,7 +60,7 @@ def two_attempts(quiz):
 def test_worker_aggregates_finished_attempts(author_api, quiz, two_attempts):
     assert process_outbox_batch() == 2
 
-    report = author_api.get(f"/api/my/quizzes/{quiz.pk}/statistics/").json()
+    report = author_api.get(f"/api/v1/quizzes/{quiz.pk}/statistics/").json()
 
     assert report["attempts_count"] == 2
     assert report["avg_duration_seconds"] == 52.5
@@ -125,7 +125,7 @@ def test_long_pause_is_capped(quiz):
 
 
 def test_unfinished_attempts_are_not_counted(respondent, quiz):
-    client_for(respondent).get(f"/api/quizzes/{quiz.pk}/next-question/")
+    client_for(respondent).post(f"/api/v1/quizzes/{quiz.pk}/attempt/")
     submit_answer(respondent, quiz.pk, question_id(quiz, 0), option_ids=[option_id(quiz, 0, 0)])
 
     assert process_outbox_batch() == 0
@@ -133,7 +133,7 @@ def test_unfinished_attempts_are_not_counted(respondent, quiz):
 
 
 def test_empty_report(author_api, quiz):
-    report = author_api.get(f"/api/my/quizzes/{quiz.pk}/statistics/").json()
+    report = author_api.get(f"/api/v1/quizzes/{quiz.pk}/statistics/").json()
 
     assert report["attempts_count"] == 0
     assert report["avg_duration_seconds"] is None
@@ -141,7 +141,7 @@ def test_empty_report(author_api, quiz):
 
 
 def test_statistics_is_only_for_author(respondent_api, quiz):
-    response = respondent_api.get(f"/api/my/quizzes/{quiz.pk}/statistics/")
+    response = respondent_api.get(f"/api/v1/quizzes/{quiz.pk}/statistics/")
 
     assert response.status_code == 404
 

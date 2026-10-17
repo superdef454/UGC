@@ -4,7 +4,7 @@
 {% block title %}Статистика: {{ report.title }}{% endblock %}
 
 {% block content %}
-<a class="back" href="{% url 'web:quiz-detail' report.quiz_id %}">{{ report.title }}</a>
+<a class="back" href="{% url 'web:quiz-manage' report.quiz_id %}">{{ report.title }}</a>
 
 <div class="page-head">
   <h1 class="page-title">Статистика</h1>

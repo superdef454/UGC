@@ -23,6 +23,11 @@ def test_pages_require_login(client):
 
 
 def test_pass_quiz_in_browser(browser, respondent, quiz):
+    intro = browser.get(f"/quizzes/{quiz.pk}/")
+    assert "Начать" in intro.content.decode()
+    assert not Attempt.objects.exists()  # просмотр страницы ничего не создаёт
+
+    assert browser.post(f"/quizzes/{quiz.pk}/start/").status_code == 302
     page = browser.get(f"/quizzes/{quiz.pk}/")
     assert "Ты любишь буратту с помидорами?" in page.content.decode()
 
@@ -39,7 +44,7 @@ def test_pass_quiz_in_browser(browser, respondent, quiz):
 
 
 def test_error_keeps_choice(browser, quiz):
-    browser.get(f"/quizzes/{quiz.pk}/")
+    browser.post(f"/quizzes/{quiz.pk}/start/")
     picked = option_id(quiz, 0, 1)
 
     response = browser.post(
@@ -54,7 +59,7 @@ def test_error_keeps_choice(browser, quiz):
 
 
 def test_double_click_is_not_an_error(browser, quiz):
-    browser.get(f"/quizzes/{quiz.pk}/")
+    browser.post(f"/quizzes/{quiz.pk}/start/")
     data = {"question_id": question_id(quiz, 0), "option": [option_id(quiz, 0, 0)]}
 
     first = browser.post(f"/quizzes/{quiz.pk}/", data)
@@ -68,11 +73,11 @@ def test_author_pages(author, quiz):
     client.force_login(author)
     process_outbox_batch()
 
-    assert client.get("/my/").status_code == 200
-    assert client.get(f"/my/{quiz.pk}/").status_code == 200
-    assert client.get(f"/my/{quiz.pk}/statistics/").status_code == 200
-    assert client.get("/my/new/").status_code == 200
+    assert client.get("/quizzes/authored/").status_code == 200
+    assert client.get(f"/quizzes/{quiz.pk}/manage/").status_code == 200
+    assert client.get(f"/quizzes/{quiz.pk}/statistics/").status_code == 200
+    assert client.get("/quizzes/new/").status_code == 200
 
 
 def test_statistics_page_is_only_for_author(browser, quiz):
-    assert browser.get(f"/my/{quiz.pk}/statistics/").status_code == 404
+    assert browser.get(f"/quizzes/{quiz.pk}/statistics/").status_code == 404

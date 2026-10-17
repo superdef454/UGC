@@ -21,6 +21,12 @@ class NotFoundError(DomainError):
     status_code = status.HTTP_404_NOT_FOUND
 
 
+class ConflictError(DomainError):
+    """Действие не подходит текущему состоянию объекта: опрос закрыт, уже пройден и т.п."""
+
+    status_code = status.HTTP_409_CONFLICT
+
+
 def exception_handler(exc: Exception, context: dict[str, Any]) -> Response | None:
     """Обработчик DRF, который дополнительно понимает доменные ошибки."""
     if isinstance(exc, DomainError):

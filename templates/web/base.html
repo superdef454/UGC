@@ -17,8 +17,8 @@
         {% with current=request.resolver_match.url_name %}
         <nav class="nav" aria-label="Разделы">
           <a href="{% url 'web:quiz-list' %}"{% if current == 'quiz-list' or current == 'take-quiz' %} aria-current="page"{% endif %}>Пройти</a>
-          <a href="{% url 'web:my-attempts' %}"{% if current == 'my-attempts' %} aria-current="page"{% endif %}>Мои прохождения</a>
-          <a href="{% url 'web:my-quizzes' %}"{% if current == 'my-quizzes' or current == 'quiz-detail' or current == 'quiz-builder' or current == 'quiz-statistics' %} aria-current="page"{% endif %}>Мои опросы</a>
+          <a href="{% url 'web:attempt-list' %}"{% if current == 'attempt-list' %} aria-current="page"{% endif %}>Мои прохождения</a>
+          <a href="{% url 'web:authored-quizzes' %}"{% if current == 'authored-quizzes' or current == 'quiz-manage' or current == 'quiz-builder' or current == 'quiz-statistics' %} aria-current="page"{% endif %}>Мои опросы</a>
         </nav>
         {% endwith %}
         <form class="account" method="post" action="{% url 'logout' %}">

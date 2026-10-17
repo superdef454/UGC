@@ -6,11 +6,15 @@ app_name = "web"
 
 urlpatterns = [
     path("", views.quiz_list, name="quiz-list"),
+    path("quizzes/new/", views.quiz_builder, name="quiz-builder"),
+    path("quizzes/authored/", views.authored_quizzes, name="authored-quizzes"),
     path("quizzes/<int:pk>/", views.take_quiz, name="take-quiz"),
-    path("attempts/", views.my_attempts, name="my-attempts"),
-    path("my/", views.my_quizzes, name="my-quizzes"),
-    path("my/new/", views.quiz_builder, name="quiz-builder"),
-    path("my/<int:pk>/", views.quiz_detail, name="quiz-detail"),
-    path("my/<int:pk>/statistics/", views.quiz_statistics, name="quiz-statistics"),
-    path("my/<int:pk>/<str:action>/", views.quiz_action, name="quiz-action"),
+    path("quizzes/<int:pk>/start/", views.start_quiz, name="start-quiz"),
+    path("quizzes/<int:pk>/manage/", views.quiz_manage, name="quiz-manage"),
+    path("quizzes/<int:pk>/statistics/", views.quiz_statistics, name="quiz-statistics"),
+    path(
+        "quizzes/<int:pk>/publish/", views.quiz_action, {"action": "publish"}, name="quiz-publish"
+    ),
+    path("quizzes/<int:pk>/close/", views.quiz_action, {"action": "close"}, name="quiz-close"),
+    path("attempts/", views.attempt_list, name="attempt-list"),
 ]

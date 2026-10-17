@@ -9,4 +9,4 @@ class AttemptAdmin(ReadOnlyAdmin):
     list_display = ("id", "user", "quiz", "status", "started_at", "finished_at")
     list_filter = ("status",)
     raw_id_fields = ("user", "quiz")
-    # Ответов на проде миллиард - в админке их не показываю, только сами прохождения.
+    # Ответов на проде миллиард - в админке только сами прохождения, без ответов.

@@ -4,7 +4,7 @@ from analytics import views
 
 urlpatterns = [
     path(
-        "my/quizzes/<int:pk>/statistics/",
+        "quizzes/<int:quiz_id>/statistics/",
         views.QuizStatisticsView.as_view(),
         name="quiz-statistics",
     ),

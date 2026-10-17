@@ -34,7 +34,7 @@ def run_together[T](func: Callable[[], T], times: int) -> list[T]:
 
 
 def test_double_submit_saves_one_answer(respondent, quiz):
-    client_for(respondent).get(f"/api/quizzes/{quiz.pk}/next-question/")
+    client_for(respondent).post(f"/api/v1/quizzes/{quiz.pk}/attempt/")
 
     def send() -> str:
         try:
