@@ -33,15 +33,23 @@ class QuizInput(TypedDict):
     questions: list[QuestionInput]
 
 
-def get_own_quiz(user: User, quiz_id: int, *, for_update: bool = False) -> Quiz:
-    """Опрос, автором которого является пользователь."""
-    queryset = Quiz.objects.select_for_update() if for_update else Quiz.objects.all()
-    quiz = queryset.filter(pk=quiz_id).first()
+def _check_owner(user: User, quiz: Quiz | None) -> Quiz:
     if quiz is None:
         raise NotFoundError("Опрос не найден")
     if quiz.author_id != user.pk:
         raise PermissionDeniedError("Это не ваш опрос")
     return quiz
+
+
+def get_own_quiz(user: User, quiz_id: int, *, for_update: bool = False) -> Quiz:
+    """Опрос, автором которого является пользователь."""
+    queryset = Quiz.objects.select_for_update() if for_update else Quiz.objects.all()
+    return _check_owner(user, queryset.filter(pk=quiz_id).first())
+
+
+async def aget_own_quiz(user: User, quiz_id: int) -> Quiz:
+    """Async-версия :func:`get_own_quiz` (без блокировки)."""
+    return _check_owner(user, await Quiz.objects.filter(pk=quiz_id).afirst())
 
 
 @transaction.atomic
