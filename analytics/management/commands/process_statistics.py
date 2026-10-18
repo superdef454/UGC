@@ -15,6 +15,8 @@ MAX_BACKOFF = 60.0
 
 
 class Command(BaseCommand):
+    """Воркер статистики, запускается отдельным процессом (сервис stats-worker в compose)."""
+
     help = "Воркер статистики: переносит завершённые прохождения из очереди в статистику"
 
     def add_arguments(self, parser: ArgumentParser) -> None:

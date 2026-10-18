@@ -11,6 +11,8 @@ from quizzes.models import AnswerOption, Question, Quiz
 
 
 class QuestionInline(admin.TabularInline):
+    """Вопросы внутри опроса; у опубликованного - только просмотр."""
+
     model = Question
     extra = 0
     show_change_link = True
@@ -29,6 +31,8 @@ class QuestionInline(admin.TabularInline):
 
 
 class AnswerOptionInline(admin.TabularInline):
+    """Варианты внутри вопроса; у опубликованного опроса - только просмотр."""
+
     model = AnswerOption
     extra = 0
 
@@ -47,6 +51,8 @@ class AnswerOptionInline(admin.TabularInline):
 
 @admin.register(Quiz)
 class QuizAdmin(admin.ModelAdmin):
+    """Опросы. Статус меняется только через сайт / API, где есть проверки публикации."""
+
     list_display = ("title", "author", "status", "created_at", "published_at")
     list_filter = ("status",)
     search_fields = ("title",)
@@ -65,6 +71,8 @@ class QuizAdmin(admin.ModelAdmin):
 
 @admin.register(Question)
 class QuestionAdmin(admin.ModelAdmin):
+    """Вопросы. Новые добавляются только из опроса, правка - пока опрос черновик."""
+
     list_display = ("text", "quiz", "order", "type", "is_required")
     raw_id_fields = ("quiz",)
     inlines = (AnswerOptionInline,)

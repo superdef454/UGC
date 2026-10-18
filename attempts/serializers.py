@@ -4,11 +4,15 @@ from attempts.models import Attempt
 
 
 class OptionItemSerializer(serializers.Serializer):
+    """Вариант ответа для участника."""
+
     id = serializers.IntegerField()
     text = serializers.CharField()
 
 
 class QuestionItemSerializer(serializers.Serializer):
+    """Вопрос для участника: текст, тип, обязательность и варианты."""
+
     id = serializers.IntegerField()
     text = serializers.CharField()
     type = serializers.CharField()
@@ -19,6 +23,8 @@ class QuestionItemSerializer(serializers.Serializer):
 
 
 class ProgressSerializer(serializers.Serializer):
+    """Прогресс прохождения: сколько вопросов отвечено из скольких."""
+
     answered = serializers.IntegerField()
     total = serializers.IntegerField()
     percent = serializers.IntegerField()
@@ -46,6 +52,8 @@ class AnswerInputSerializer(serializers.Serializer):
 
 
 class AttemptSerializer(serializers.ModelSerializer):
+    """Прохождение в списке пользователя: опрос, статус и прогресс."""
+
     quiz_id = serializers.IntegerField(source="quiz.id")
     quiz_title = serializers.CharField(source="quiz.title")
     answered_count = serializers.IntegerField()

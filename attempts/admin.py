@@ -6,6 +6,8 @@ from core.admin import ReadOnlyAdmin
 
 @admin.register(Attempt)
 class AttemptAdmin(ReadOnlyAdmin):
+    """Прохождения - только просмотр, их пишут сервисы."""
+
     list_display = ("id", "user", "quiz", "status", "started_at", "finished_at")
     list_filter = ("status",)
     raw_id_fields = ("user", "quiz")

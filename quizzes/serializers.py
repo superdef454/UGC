@@ -13,10 +13,14 @@ def validate_text(value: str) -> None:
 
 
 class OptionInputSerializer(serializers.Serializer):
+    """Вариант ответа при создании опроса."""
+
     text = serializers.CharField(max_length=500, validators=[validate_text])
 
 
 class QuestionInputSerializer(serializers.Serializer):
+    """Вопрос при создании опроса: нужны варианты или разрешённый свой ответ."""
+
     text = serializers.CharField(max_length=1000, validators=[validate_text])
     type = serializers.ChoiceField(choices=Question.Type.choices, default=Question.Type.SINGLE)
     allow_custom_answer = serializers.BooleanField(default=False)
@@ -39,12 +43,16 @@ class QuizCreateSerializer(serializers.Serializer):
 
 
 class AnswerOptionSerializer(serializers.ModelSerializer):
+    """Вариант ответа в структуре опроса."""
+
     class Meta:
         model = AnswerOption
         fields = ("id", "text", "order")
 
 
 class QuestionSerializer(serializers.ModelSerializer):
+    """Вопрос с вариантами в порядке, заданном автором."""
+
     options = AnswerOptionSerializer(many=True, read_only=True)
 
     class Meta:
@@ -53,6 +61,8 @@ class QuestionSerializer(serializers.ModelSerializer):
 
 
 class QuizDetailSerializer(serializers.ModelSerializer):
+    """Опрос со всей структурой: вопросы и варианты по порядку."""
+
     questions = QuestionSerializer(many=True, read_only=True)
 
     class Meta:
@@ -61,6 +71,8 @@ class QuizDetailSerializer(serializers.ModelSerializer):
 
 
 class QuizListSerializer(serializers.ModelSerializer):
+    """Опрос в каталоге: без структуры, только число вопросов."""
+
     questions_count = serializers.IntegerField(read_only=True)
 
     class Meta:
@@ -76,6 +88,8 @@ class QuizListSerializer(serializers.ModelSerializer):
 
 
 class AuthoredQuizSerializer(QuizListSerializer):
+    """Опрос в списке автора: плюс дата создания и число завершённых прохождений."""
+
     attempts_count = serializers.IntegerField(read_only=True)
 
     class Meta(QuizListSerializer.Meta):
@@ -83,4 +97,6 @@ class AuthoredQuizSerializer(QuizListSerializer):
 
 
 class OrderSerializer(serializers.Serializer):
+    """Новый порядок: все id вопросов (или вариантов) ровно по одному разу."""
+
     ids = serializers.ListField(child=serializers.IntegerField(min_value=1), min_length=1)

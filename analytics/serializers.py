@@ -2,6 +2,8 @@ from rest_framework import serializers
 
 
 class OptionReportSerializer(serializers.Serializer):
+    """Вариант ответа в статистике: сколько раз выбран и доля от ответов."""
+
     id = serializers.IntegerField()
     text = serializers.CharField()
     count = serializers.IntegerField()
@@ -10,6 +12,8 @@ class OptionReportSerializer(serializers.Serializer):
 
 
 class QuestionReportSerializer(serializers.Serializer):
+    """Вопрос в статистике: ответы, пропуски, свои ответы, среднее время."""
+
     id = serializers.IntegerField()
     order = serializers.IntegerField()
     text = serializers.CharField()
@@ -25,6 +29,8 @@ class QuestionReportSerializer(serializers.Serializer):
 
 
 class QuizReportSerializer(serializers.Serializer):
+    """Статистика опроса: прохождения, среднее время и разбивка по вопросам."""
+
     quiz_id = serializers.IntegerField()
     title = serializers.CharField()
     status = serializers.CharField()

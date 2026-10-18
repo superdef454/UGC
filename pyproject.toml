@@ -22,9 +22,6 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "tests/*" = ["ANN", "D"]
-"**/management/commands/*" = ["D101"]
-"**/admin.py" = ["D101"]
-"**/serializers.py" = ["D101"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

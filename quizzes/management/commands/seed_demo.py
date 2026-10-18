@@ -73,6 +73,8 @@ CUSTOM_ANSWERS = ["С базиликом", "Только летом", "Спар�
 
 
 class Command(BaseCommand):
+    """Демо-данные для ручной проверки. Повторный запуск ничего не дублирует."""
+
     help = "Демо-данные: пользователи alice и bob, опрос «Овощи» и случайные прохождения"
 
     def add_arguments(self, parser: ArgumentParser) -> None:
