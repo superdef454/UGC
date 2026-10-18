@@ -52,6 +52,7 @@ class Quiz(models.Model):
         null=True,
         blank=True,
         related_name="clones",
+        db_index=False,  # почти всегда NULL - частичный индекс ниже
     )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -69,6 +70,13 @@ class Quiz(models.Model):
                 fields=["-published_at", "-id"],
                 name="quiz_published_idx",
                 condition=Q(status="published"),
+            ),
+            # Нужен для SET NULL при удалении исходного опроса. NULL в индекс
+            # не кладём - иначе он почти целиком состоит из пустых значений.
+            models.Index(
+                fields=["cloned_from"],
+                name="quiz_cloned_from_idx",
+                condition=Q(cloned_from__isnull=False),
             ),
         ]
 
