@@ -2,7 +2,7 @@ import pytest
 from django.test import Client
 
 from analytics.services import process_outbox_batch
-from attempts.models import Attempt
+from attempts.models import Answer, Attempt
 from tests.conftest import option_id, question_id
 
 pytestmark = pytest.mark.django_db
@@ -45,17 +45,63 @@ def test_pass_quiz_in_browser(browser, respondent, quiz):
 
 def test_error_keeps_choice(browser, quiz):
     browser.post(f"/quizzes/{quiz.pk}/start/")
-    picked = option_id(quiz, 0, 1)
 
+    # Выбран «Свой вариант», но текст не написан - обязательный вопрос без ответа.
     response = browser.post(
         f"/quizzes/{quiz.pk}/",
-        {"question_id": question_id(quiz, 0), "option": [picked], "custom_text": "Ещё"},
+        {
+            "question_id": question_id(quiz, 0),
+            "option": ["custom"],
+            "custom_text": "  ",
+            "exclusive_custom": "1",
+        },
     )
 
     html = response.content.decode()
     assert response.status_code == 400
-    assert "только один вариант" in html
-    assert f'value="{picked}" checked' in html
+    assert "обязательный" in html
+    assert 'value="custom" checked' in html
+
+
+def test_custom_text_is_kept_but_option_wins(browser, quiz):
+    # Пользователь написал свой ответ, потом передумал и выбрал вариант - текст
+    # остался в форме, но отправляется только выбранный вариант.
+    browser.post(f"/quizzes/{quiz.pk}/start/")
+    picked = option_id(quiz, 0, 1)
+
+    response = browser.post(
+        f"/quizzes/{quiz.pk}/",
+        {
+            "question_id": question_id(quiz, 0),
+            "option": [picked],
+            "custom_text": "Сырники",
+            "exclusive_custom": "1",
+        },
+    )
+
+    assert response.status_code == 302
+    answer = Answer.objects.get()
+    assert answer.custom_text == ""
+    assert list(answer.selected_options.values_list("pk", flat=True)) == [picked]
+
+
+def test_custom_choice_sends_text(browser, quiz):
+    browser.post(f"/quizzes/{quiz.pk}/start/")
+
+    response = browser.post(
+        f"/quizzes/{quiz.pk}/",
+        {
+            "question_id": question_id(quiz, 0),
+            "option": ["custom"],
+            "custom_text": "Сырники",
+            "exclusive_custom": "1",
+        },
+    )
+
+    assert response.status_code == 302
+    answer = Answer.objects.get()
+    assert answer.custom_text == "Сырники"
+    assert not answer.selected_options.exists()
 
 
 def test_double_click_is_not_an_error(browser, quiz):

@@ -596,6 +596,20 @@ textarea {
   outline-offset: 2px;
 }
 
+/* Поле своего ответа под вариантом «Свой вариант»: текст сохраняется всегда,
+   но пока выбран другой вариант - поле приглушено и не отправляется. */
+.choice__custom {
+  margin: 2px 0 0 36px;
+  width: calc(100% - 36px) !important;
+  opacity: 0.55;
+  transition: opacity 0.15s ease-out;
+}
+
+.choices:has(input[value="custom"]:checked) .choice__custom,
+.choice__custom:focus {
+  opacity: 1;
+}
+
 /* Управление опросом */
 
 .outline {

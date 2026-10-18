@@ -41,10 +41,22 @@
             <span class="choice__text">{{ option.text }}</span>
           </label>
         {% endfor %}
+
+        {% if q.allow_custom_answer and not q.is_multiple %}
+          {# Одиночный выбор: свой ответ - ещё один вариант. Текст не стирается при смене выбора, #}
+          {# отправляется только то, что выбрано. #}
+          <input type="hidden" name="exclusive_custom" value="1">
+          <label class="choice">
+            <input type="radio" name="option" value="custom"{% if "custom" in picked %} checked{% endif %}>
+            <span class="choice__mark choice__mark--dot" aria-hidden="true"></span>
+            <span class="choice__text">Свой вариант</span>
+          </label>
+          <textarea class="choice__custom" name="custom_text" rows="2" maxlength="1000" aria-label="Свой вариант">{{ custom_text }}</textarea>
+        {% endif %}
       </fieldset>
       {% endif %}
 
-      {% if q.allow_custom_answer %}
+      {% if q.allow_custom_answer and q.is_multiple or q.allow_custom_answer and not q.options %}
         <label class="field">
           <span class="field__label">{% if q.options %}Или напишите свой вариант{% else %}Ваш ответ{% endif %}</span>
           <textarea name="custom_text" rows="2" maxlength="1000">{{ custom_text }}</textarea>

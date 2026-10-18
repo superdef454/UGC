@@ -59,6 +59,26 @@ def _ints(values: list[str]) -> list[int]:
         raise DomainError("Некорректный вариант ответа") from exc
 
 
+CUSTOM_CHOICE = "custom"
+
+
+def _posted_answer(request: HttpRequest) -> tuple[list[int], str]:
+    """Варианты и свой ответ из формы вопроса.
+
+    В одиночном вопросе «Свой вариант» - отдельная radio-кнопка, а текст остаётся
+    в форме при выборе другого варианта. Поэтому отправляется только выбранное:
+    отмечен вариант - текст игнорируется, отмечен «Свой вариант» - только текст.
+    """
+    if "skip" in request.POST:
+        return [], ""
+    picked = request.POST.getlist("option")
+    option_ids = _ints([value for value in picked if value != CUSTOM_CHOICE])
+    custom_text = request.POST.get("custom_text", "")
+    if request.POST.get("exclusive_custom") and option_ids and CUSTOM_CHOICE not in picked:
+        custom_text = ""
+    return option_ids, custom_text
+
+
 @login_required
 @require_GET
 async def quiz_list(request: HttpRequest) -> HttpResponse:
@@ -87,14 +107,14 @@ async def take_quiz(request: HttpRequest, pk: int) -> HttpResponse:
     user = await _current_user(request)
     error = None
     if request.method == "POST":
-        skip = "skip" in request.POST
+        option_ids, custom_text = _posted_answer(request)
         try:
             await sync_to_async(submit_answer)(
                 user,
                 pk,
                 question_id=_ints([request.POST.get("question_id", "")])[0],
-                option_ids=[] if skip else _ints(request.POST.getlist("option")),
-                custom_text="" if skip else request.POST.get("custom_text", ""),
+                option_ids=option_ids,
+                custom_text=custom_text,
             )
             return redirect("web:take-quiz", pk=pk)
         except DomainError as exc:
